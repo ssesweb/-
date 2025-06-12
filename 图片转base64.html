@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片处理工具 - 缩放与Base64转换</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background: linear-gradient(to right, #4776E6, #8E54E9);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 25px;
+        }
+        
+        .left-panel {
+            flex: 1;
+            min-width: 300px;
+            padding: 20px;
+        }
+        
+        .right-panel {
+            flex: 1;
+            min-width: 300px;
+            padding: 20px;
+            border-left: 1px solid #eee;
+        }
+        
+        .drop-area {
+            border: 3px dashed #8E54E9;
+            border-radius: 15px;
+            height: 250px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #f8f9ff;
+            margin-bottom: 25px;
+        }
+        
+        .drop-area:hover, .drop-area.drag-over {
+            background-color: #eef2ff;
+            border-color: #4776E6;
+            transform: translateY(-3px);
+        }
+        
+        .drop-area i {
+            font-size: 64px;
+            color: #8E54E9;
+            margin-bottom: 15px;
+        }
+        
+        .drop-area h3 {
+            color: #4776E6;
+            margin-bottom: 10px;
+        }
+        
+        .drop-area p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .controls {
+            background: #f8f9ff;
+            border-radius: 15px;
+            padding: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="number"]:focus {
+            border-color: #8E54E9;
+            outline: none;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(to right, #4776E6, #8E54E9);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(142, 84, 233, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(142, 84, 233, 0.4);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .image-preview {
+            background: #f8f9ff;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 25px;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .image-preview img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .base64-result {
+            position: relative;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            width: auto;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            background: linear-gradient(to right, #4CAF50, #2E7D32);
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .dimensions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .dimension-item {
+            text-align: center;
+            background: #eef2ff;
+            padding: 8px 15px;
+            border-radius: 8px;
+            flex: 1;
+            margin: 0 5px;
+        }
+        
+        .dimension-value {
+            font-weight: bold;
+            color: #4776E6;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .right-panel {
+                border-left: none;
+                border-top: 1px solid #eee;
+                margin-top: 20px;
+                padding-top: 30px;
+            }
+            
+            .drop-area {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>图片处理工具</h1>
+            <p class="subtitle">拖入图片 → 按最长边缩放 → 转换为Base64格式 → 一键复制</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="drop-area" id="dropArea">
+                    <i>📁</i>
+                    <h3>拖放图片到此处</h3>
+                    <p>或点击选择图片文件</p>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </div>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="maxSize">最长边尺寸（像素）:</label>
+                        <input type="number" id="maxSize" min="10" max="5000" value="800">
+                    </div>
+                    
+                    <button id="processBtn" disabled>处理图片</button>
+                </div>
+                
+                <div class="image-preview">
+                    <div id="previewPlaceholder">
+                        <p>处理后的图片将显示在这里</p>
+                    </div>
+                    <img id="previewImage" style="display: none;">
+                </div>
+                
+                <div class="dimensions">
+                    <div class="dimension-item">
+                        原始尺寸: <span id="originalSize" class="dimension-value">-</span>
+                    </div>
+                    <div class="dimension-item">
+                        处理后尺寸: <span id="processedSize" class="dimension-value">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="right-panel">
+                <div class="base64-result">
+                    <label for="base64Output">Base64 结果:</label>
+                    <textarea id="base64Output" readonly placeholder="处理后的Base64数据将显示在这里"></textarea>
+                    <button class="copy-btn" id="copyBtn" disabled>复制到剪贴板</button>
+                </div>
+                
+                <div style="margin-top: 30px; background: #f0f7ff; padding: 20px; border-radius: 15px;">
+                    <h3 style="color: #4776E6; margin-bottom: 15px;">使用说明</h3>
+                    <ol style="padding-left: 20px; color: #555; line-height: 1.8;">
+                        <li>将图片拖入左侧区域或点击选择图片</li>
+                        <li>设置最长边尺寸（保持宽高比）</li>
+                        <li>点击"处理图片"按钮进行缩放</li>
+                        <li>处理后的Base64数据将显示在右侧</li>
+                        <li>点击"复制到剪贴板"按钮复制结果</li>
+                    </ol>
+                    <p style="margin-top: 15px; color: #777; font-style: italic;">
+                        提示：Base64数据可直接用于HTML img标签的src属性或CSS背景
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification">已成功复制到剪贴板！</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const maxSizeInput = document.getElementById('maxSize');
+        const processBtn = document.getElementById('processBtn');
+        const previewImage = document.getElementById('previewImage');
+        const previewPlaceholder = document.getElementById('previewPlaceholder');
+        const base64Output = document.getElementById('base64Output');
+        const copyBtn = document.getElementById('copyBtn');
+        const notification = document.getElementById('notification');
+        const originalSize = document.getElementById('originalSize');
+        const processedSize = document.getElementById('processedSize');
+        
+        let originalImage = null;
+        
+        // 点击拖放区域触发文件选择
+        dropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // 处理拖放事件
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropArea.classList.add('drag-over');
+        }
+        
+        function unhighlight() {
+            dropArea.classList.remove('drag-over');
+        }
+        
+        // 处理文件放置
+        dropArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+        
+        // 处理文件选择
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+        
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            
+            const file = files[0];
+            if (!file.type.match('image.*')) {
+                alert('请选择图片文件！');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                originalImage = new Image();
+                originalImage.onload = function() {
+                    // 显示原始尺寸
+                    originalSize.textContent = `${originalImage.width}×${originalImage.height}`;
+                    processedSize.textContent = '-';
+                    
+                    // 启用处理按钮
+                    processBtn.disabled = false;
+                    
+                    // 显示原始图片预览
+                    previewImage.style.display = 'block';
+                    previewPlaceholder.style.display = 'none';
+                    previewImage.src = originalImage.src;
+                };
+                originalImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // 处理图片
+        processBtn.addEventListener('click', processImage);
+        
+        function processImage() {
+            if (!originalImage) return;
+            
+            const maxSize = parseInt(maxSizeInput.value);
+            if (isNaN(maxSize) || maxSize < 10) {
+                alert('请输入有效的尺寸（最小10像素）');
+                return;
+            }
+            
+            // 计算新尺寸（保持宽高比）
+            let newWidth, newHeight;
+            if (originalImage.width > originalImage.height) {
+                newWidth = maxSize;
+                newHeight = Math.round((originalImage.height / originalImage.width) * maxSize);
+            } else {
+                newHeight = maxSize;
+                newWidth = Math.round((originalImage.width / originalImage.height) * maxSize);
+            }
+            
+            // 使用Canvas缩放图片
+            const canvas = document.createElement('canvas');
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(originalImage, 0, 0, newWidth, newHeight);
+            
+            // 显示处理后的图片
+            previewImage.src = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // 更新尺寸显示
+            processedSize.textContent = `${newWidth}×${newHeight}`;
+            
+            // 转换为Base64并去掉前缀
+            const base64Data = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+            base64Output.value = base64Data;
+            
+            // 启用复制按钮
+            copyBtn.disabled = false;
+        }
+        
+        // 复制Base64到剪贴板
+        copyBtn.addEventListener('click', function() {
+            base64Output.select();
+            document.execCommand('copy');
+            
+            // 显示通知
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2000);
+        });
+    });
+</script>
+</body>
+</html>
