@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片分割工具 - 自定义切分与保存</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(90deg, #5a67d8, #9f7aea);
+            color: white;
+            padding: 25px 40px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 30px;
+            padding: 40px;
+        }
+        
+        @media (max-width: 900px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .settings-panel {
+            background: #f8f9ff;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .panel-title {
+            font-size: 1.5rem;
+            color: #5a67d8;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e7ff;
+        }
+        
+        .setting-item {
+            margin-bottom: 25px;
+        }
+        
+        .setting-item label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #4a5568;
+        }
+        
+        .grid-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .grid-controls input {
+            width: 80px;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .grid-controls input:focus {
+            border-color: #5a67d8;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.2);
+        }
+        
+        .format-select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            background: white;
+            transition: all 0.3s;
+        }
+        
+        .format-select:focus {
+            border-color: #5a67d8;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(90, 103, 216, 0.2);
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(90deg, #5a67d8, #9f7aea);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(90, 103, 216, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(90, 103, 216, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .btn i {
+            margin-right: 10px;
+        }
+        
+        .btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .image-section {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .drop-area {
+            border: 3px dashed #c3dafe;
+            border-radius: 15px;
+            background: #f0f4ff;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 30px;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .drop-area:hover, .drop-area.drag-over {
+            border-color: #5a67d8;
+            background: #e6edff;
+        }
+        
+        .drop-area i {
+            font-size: 4rem;
+            color: #5a67d8;
+            margin-bottom: 20px;
+        }
+        
+        .drop-area h3 {
+            font-size: 1.5rem;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        
+        .drop-area p {
+            color: #718096;
+            font-size: 1rem;
+        }
+        
+        .preview-container {
+            background: #f8f9ff;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .preview-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .grid-preview {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background: #e0e7ff;
+            border-radius: 10px;
+            padding: 15px;
+            min-height: 200px;
+            position: relative;
+        }
+        
+        .grid-preview-image {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.7;
+        }
+        
+        .grid-cell {
+            aspect-ratio: 1/1;
+            background: rgba(163, 191, 250, 0.5);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+            position: relative;
+            z-index: 1;
+            border: 2px solid rgba(255, 255, 255, 0.7);
+        }
+        
+        .grid-cell:hover {
+            background: rgba(127, 156, 245, 0.7);
+            transform: scale(1.05);
+        }
+        
+        .results-section {
+            grid-column: 1 / -1;
+            background: #f8f9ff;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            display: none;
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .result-item {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        
+        .result-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+        }
+        
+        .result-img {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e2e8f0;
+        }
+        
+        .result-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .result-info {
+            padding: 12px;
+            text-align: center;
+            background: #5a67d8;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #718096;
+            font-size: 0.9rem;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .instructions {
+            background: #fff9db;
+            border-left: 4px solid #ffd43b;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            margin-top: 15px;
+            overflow: hidden;
+            display: none;
+        }
+        
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, #5a67d8, #9f7aea);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .success-message {
+            background: #c6f6d5;
+            color: #2f855a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            display: none;
+        }
+        
+        .success-message i {
+            margin-right: 10px;
+            font-size: 1.5rem;
+        }
+        
+        .success-content h3 {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-crop-alt"></i> 图片分割工具</h1>
+            <p class="subtitle">拖入图片，自定义行列切分，按需保存分割后的图片片段</p>
+        </header>
+        
+        <div class="content">
+            <div class="settings-panel">
+                <h2 class="panel-title"><i class="fas fa-sliders-h"></i> 分割设置</h2>
+                
+                <div class="setting-item">
+                    <label>分割网格</label>
+                    <div class="grid-controls">
+                        <input type="number" id="rows" min="1" max="12" value="3"> 行
+                        <span style="font-size: 1.5rem; font-weight: bold;">×</span>
+                        <input type="number" id="cols" min="1" max="12" value="3"> 列
+                    </div>
+                </div>
+                
+                <div class="setting-item">
+                    <label>输出格式</label>
+                    <select class="format-select" id="format">
+                        <option value="jpg">JPG (默认)</option>
+                        <option value="png">PNG</option>
+                        <option value="webp">WEBP</option>
+                    </select>
+                </div>
+                
+                <div class="instructions">
+                    <p><strong>使用说明：</strong></p>
+                    <p>1. 拖放图片到左侧区域或点击选择图片</p>
+                    <p>2. 调整行列数量 (最多12×12)</p>
+                    <p>3. 点击"分割图片"按钮进行处理</p>
+                    <p>4. 分割完成后可保存全部或单个图片</p>
+                </div>
+                
+                <button class="btn" id="process-btn">
+                    <i class="fas fa-cut"></i> 分割图片
+                </button>
+                
+                <div class="progress-bar" id="progress-bar">
+                    <div class="progress" id="progress"></div>
+                </div>
+                
+                <button class="btn" id="save-all-btn" style="margin-top: 15px; background: linear-gradient(90deg, #48bb78, #38a169);" disabled>
+                    <i class="fas fa-download"></i> 保存全部图片
+                </button>
+            </div>
+            
+            <div class="image-section">
+                <div class="drop-area" id="drop-area">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>拖放图片到此处</h3>
+                    <p>支持 JPG, PNG, WEBP 格式的图片</p>
+                    <p>最大尺寸: 5MB</p>
+                    <input type="file" id="file-input" class="hidden" accept="image/*">
+                </div>
+                
+                <div class="preview-container">
+                    <div class="preview-title">
+                        <h3><i class="fas fa-th"></i> 分割预览</h3>
+                        <span id="grid-size">3×3 网格</span>
+                    </div>
+                    <div class="grid-preview" id="grid-preview">
+                        <!-- Grid preview will be generated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="results-section" id="results-section">
+                <h2 class="panel-title"><i class="fas fa-images"></i> 分割结果</h2>
+                <div class="results-grid" id="results-grid">
+                    <!-- Results will be generated here -->
+                </div>
+                
+                <div class="success-message" id="success-message">
+                    <i class="fas fa-check-circle"></i>
+                    <div class="success-content">
+                        <h3>图片分割成功！</h3>
+                        <p>共生成 <span id="total-pieces">0</span> 个图片片段。点击单个片段可下载，或使用"保存全部"按钮下载ZIP文件。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2023 图片分割工具 | 使用纯HTML5技术实现 | 支持现代浏览器</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropArea = document.getElementById('drop-area');
+            const fileInput = document.getElementById('file-input');
+            const rowsInput = document.getElementById('rows');
+            const colsInput = document.getElementById('cols');
+            const formatSelect = document.getElementById('format');
+            const processBtn = document.getElementById('process-btn');
+            const saveAllBtn = document.getElementById('save-all-btn');
+            const gridPreview = document.getElementById('grid-preview');
+            const gridSizeText = document.getElementById('grid-size');
+            const resultsGrid = document.getElementById('results-grid');
+            const resultsSection = document.getElementById('results-section');
+            const progressBar = document.getElementById('progress-bar');
+            const progress = document.getElementById('progress');
+            const successMessage = document.getElementById('success-message');
+            const totalPieces = document.getElementById('total-pieces');
+            
+            let uploadedImage = null;
+            let canvas = document.createElement('canvas');
+            let ctx = canvas.getContext('2d');
+            let imagePieces = [];
+            
+            // 初始化网格预览
+            updateGridPreview(3, 3);
+            
+            // 更新网格预览
+            function updateGridPreview(rows, cols) {
+                gridPreview.innerHTML = '';
+                gridPreview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                
+                // 如果有上传的图片，添加为背景
+                if (uploadedImage) {
+                    const previewBg = document.createElement('div');
+                    previewBg.className = 'grid-preview-image';
+                    previewBg.style.backgroundImage = `url(${uploadedImage.src})`;
+                    gridPreview.appendChild(previewBg);
+                }
+                
+                for (let i = 0; i < rows * cols; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.textContent = i + 1;
+                    gridPreview.appendChild(cell);
+                }
+                
+                gridSizeText.textContent = `${rows}×${cols} 网格`;
+            }
+            
+            // 事件监听：行列输入变化
+            rowsInput.addEventListener('input', function() {
+                const rows = Math.min(12, Math.max(1, parseInt(rowsInput.value) || 3));
+                const cols = Math.min(12, Math.max(1, parseInt(colsInput.value) || 3));
+                rowsInput.value = rows;
+                colsInput.value = cols;
+                updateGridPreview(rows, cols);
+            });
+            
+            colsInput.addEventListener('input', function() {
+                const rows = Math.min(12, Math.max(1, parseInt(rowsInput.value) || 3));
+                const cols = Math.min(12, Math.max(1, parseInt(colsInput.value) || 3));
+                rowsInput.value = rows;
+                colsInput.value = cols;
+                updateGridPreview(rows, cols);
+            });
+            
+            // 事件监听：拖放区域
+            dropArea.addEventListener('click', () => fileInput.click());
+            
+            fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length) {
+                    handleImageUpload(e.target.files[0]);
+                }
+            });
+            
+            // 防止默认拖放行为
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            // 高亮拖放区域
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropArea.classList.add('drag-over');
+            }
+            
+            function unhighlight() {
+                dropArea.classList.remove('drag-over');
+            }
+            
+            // 处理图片拖放
+            dropArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const file = dt.files[0];
+                handleImageUpload(file);
+            }
+            
+            function handleImageUpload(file) {
+                // 验证图片类型
+                const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                if (!validTypes.includes(file.type)) {
+                    alert('请上传有效的图片文件 (JPG, PNG, WEBP)');
+                    return;
+                }
+                
+                // 验证文件大小
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('图片大小不能超过5MB');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedImage = new Image();
+                    uploadedImage.onload = function() {
+                        dropArea.innerHTML = `
+                            <img src="${e.target.result}" style="max-width: 100%; max-height: 250px; border-radius: 10px;">
+                            <p style="margin-top: 15px;">点击或拖放更换图片</p>
+                        `;
+                        updateGridPreview(parseInt(rowsInput.value), parseInt(colsInput.value));
+                        saveAllBtn.disabled = true;
+                        resultsSection.style.display = 'none';
+                    };
+                    uploadedImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            // 处理图片分割
+            processBtn.addEventListener('click', function() {
+                if (!uploadedImage) {
+                    alert('请先上传图片');
+                    return;
+                }
+                
+                const rows = Math.min(12, Math.max(1, parseInt(rowsInput.value) || 3));
+                const cols = Math.min(12, Math.max(1, parseInt(colsInput.value) || 3));
+                const format = formatSelect.value;
+                
+                // 显示进度条
+                progressBar.style.display = 'block';
+                progress.style.width = '0%';
+                
+                // 禁用按钮
+                processBtn.disabled = true;
+                
+                // 模拟处理延迟
+                setTimeout(() => {
+                    processImage(rows, cols, format);
+                }, 500);
+            });
+            
+            // 实际处理图片分割
+            function processImage(rows, cols, format) {
+                imagePieces = [];
+                resultsGrid.innerHTML = '';
+                
+                const pieceWidth = uploadedImage.width / cols;
+                const pieceHeight = uploadedImage.height / rows;
+                
+                // 设置canvas大小
+                canvas.width = pieceWidth;
+                canvas.height = pieceHeight;
+                
+                let processed = 0;
+                const total = rows * cols;
+                
+                // 分割图片
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        // 清空canvas
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        
+                        // 绘制图片片段
+                        ctx.drawImage(
+                            uploadedImage,
+                            x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight, // 源图像坐标和尺寸
+                            0, 0, pieceWidth, pieceHeight // 目标canvas坐标和尺寸
+                        );
+                        
+                        // 获取图片数据URL
+                        const dataURL = canvas.toDataURL(`image/${format}`);
+                        imagePieces.push({
+                            dataURL,
+                            index: y * cols + x + 1,
+                            format
+                        });
+                        
+                        // 更新进度
+                        processed++;
+                        progress.style.width = `${(processed / total) * 100}%`;
+                        
+                        // 如果是最后一个，完成处理
+                        if (processed === total) {
+                            finishProcessing();
+                        }
+                    }
+                }
+            }
+            
+            function finishProcessing() {
+                // 显示结果
+                displayResults();
+                
+                // 隐藏进度条
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                    processBtn.disabled = false;
+                }, 500);
+            }
+            
+            function displayResults() {
+                resultsGrid.innerHTML = '';
+                
+                imagePieces.forEach((piece, index) => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'result-item';
+                    
+                    const resultImg = document.createElement('div');
+                    resultImg.className = 'result-img';
+                    
+                    const img = document.createElement('img');
+                    img.src = piece.dataURL;
+                    img.alt = `片段 ${piece.index}`;
+                    resultImg.appendChild(img);
+                    
+                    const resultInfo = document.createElement('div');
+                    resultInfo.className = 'result-info';
+                    resultInfo.textContent = `片段 ${piece.index} | ${piece.format.toUpperCase()}`;
+                    
+                    resultItem.appendChild(resultImg);
+                    resultItem.appendChild(resultInfo);
+                    
+                    // 添加点击下载事件
+                    resultItem.addEventListener('click', function() {
+                        downloadImage(piece.dataURL, `片段_${piece.index}.${piece.format}`);
+                    });
+                    
+                    resultsGrid.appendChild(resultItem);
+                });
+                
+                // 更新成功消息
+                totalPieces.textContent = imagePieces.length;
+                successMessage.style.display = 'flex';
+                
+                // 显示结果区域
+                resultsSection.style.display = 'block';
+                
+                // 启用保存全部按钮
+                saveAllBtn.disabled = false;
+            }
+            
+            // 下载单张图片
+            function downloadImage(dataURL, filename) {
+                const link = document.createElement('a');
+                link.href = dataURL;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+            
+            // 保存全部图片
+            saveAllBtn.addEventListener('click', function() {
+                if (imagePieces.length === 0) {
+                    alert('没有可保存的图片片段');
+                    return;
+                }
+                
+                saveAllBtn.disabled = true;
+                saveAllBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在打包...';
+                
+                const zip = new JSZip();
+                const folder = zip.folder("分割图片");
+                
+                // 添加所有图片到zip
+                imagePieces.forEach((piece, index) => {
+                    const base64Data = piece.dataURL.split(',')[1];
+                    folder.file(`片段_${piece.index}.${piece.format}`, base64Data, {base64: true});
+                });
+                
+                // 生成zip文件
+                zip.generateAsync({type: "blob"}).then(function(content) {
+                    saveAs(content, "分割图片.zip");
+                    saveAllBtn.disabled = false;
+                    saveAllBtn.innerHTML = '<i class="fas fa-download"></i> 保存全部图片';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

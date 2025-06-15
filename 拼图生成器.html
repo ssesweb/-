@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拼图生成器</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            gap: 25px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: white;
+            font-size: 2.8rem;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: rgba(255,255,255,0.85);
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        /* 控制面板样式 */
+        .control-panel {
+            background: rgba(255, 255, 255, 0.93);
+            border-radius: 15px;
+            padding: 25px;
+            width: 320px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            height: fit-content;
+        }
+        
+        .panel-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .panel-title {
+            font-size: 1.3rem;
+            color: #1a2a6c;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .panel-title i {
+            font-size: 1.5rem;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #444;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: #f9f9f9;
+        }
+        
+        select {
+            cursor: pointer;
+        }
+        
+        button {
+            background: linear-gradient(to right, #1a2a6c, #2a3a9c);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 1.05rem;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 5px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: linear-gradient(to right, #2a3a9c, #3a4aac);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-generate {
+            background: linear-gradient(to right, #fdbb2d, #ff8c00);
+        }
+        
+        .btn-generate:hover {
+            background: linear-gradient(to right, #ff8c00, #fdbb2d);
+        }
+        
+        .btn-export {
+            background: linear-gradient(to right, #b21f1f, #e52d2d);
+            margin-top: 15px;
+        }
+        
+        .btn-export:hover {
+            background: linear-gradient(to right, #e52d2d, #ff5252);
+        }
+        
+        /* 拼图区域样式 */
+        .puzzle-area {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.93);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            min-height: 700px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .puzzle-container {
+            flex: 1;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 15px;
+            background: #f8f8f8;
+            display: grid;
+            gap: 10px;
+            margin-top: 15px;
+            min-height: 600px;
+        }
+        
+        .puzzle-item {
+            background-color: #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: move;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+        
+        .puzzle-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        }
+        
+        .puzzle-item.drag-over {
+            border: 2px dashed #1a2a6c;
+            background: rgba(26, 42, 108, 0.1);
+        }
+        
+        .puzzle-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .placeholder-text {
+            color: #888;
+            font-size: 1.2rem;
+            text-align: center;
+        }
+        
+        .puzzle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.95rem;
+            border-left: 4px solid #1a2a6c;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 8px;
+            color: #1a2a6c;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 5px;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 1000px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .control-panel {
+                width: 100%;
+            }
+        }
+        
+        .ratio-presets {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .ratio-btn {
+            padding: 10px 5px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .ratio-btn.active {
+            background: #1a2a6c;
+            color: white;
+            border-color: #1a2a6c;
+        }
+        
+        .ratio-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        .drop-info {
+            text-align: center;
+            padding: 40px 20px;
+            border: 2px dashed #1a2a6c;
+            border-radius: 10px;
+            background: rgba(26, 42, 108, 0.05);
+            margin-top: 20px;
+        }
+        
+        .drop-info i {
+            font-size: 3rem;
+            color: #1a2a6c;
+            margin-bottom: 15px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>创意拼图生成器</h1>
+        <p class="subtitle">自定义行列数、调整宽高比、拖放图片、导出高质量拼图作品</p>
+    </header>
+    
+    <div class="container">
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <div class="panel-section">
+                <h2 class="panel-title"><i>🧩</i> 拼图设置</h2>
+                
+                <div class="input-group">
+                    <label for="rows">行数</label>
+                    <input type="number" id="rows" min="1" max="10" value="3">
+                </div>
+                
+                <div class="input-group">
+                    <label for="columns">列数</label>
+                    <input type="number" id="columns" min="1" max="10" value="3">
+                </div>
+                
+                <div class="input-group">
+                    <label for="gap">间距 (px)</label>
+                    <input type="number" id="gap" min="0" max="50" value="10">
+                </div>
+                
+                <button id="generate-btn" class="btn-generate">生成拼图网格</button>
+            </div>
+            
+            <div class="panel-section">
+                <h2 class="panel-title"><i>📐</i> 宽高比</h2>
+                <div class="ratio-presets">
+                    <div class="ratio-btn active" data-ratio="1">1:1</div>
+                    <div class="ratio-btn" data-ratio="0.75">4:3</div>
+                    <div class="ratio-btn" data-ratio="1.333">3:4</div>
+                    <div class="ratio-btn" data-ratio="1.777">16:9</div>
+                    <div class="ratio-btn" data-ratio="0.5625">9:16</div>
+                    <div class="ratio-btn" data-ratio="custom">自定义</div>
+                </div>
+                
+                <div class="input-group" style="display: none;" id="custom-ratio">
+                    <label for="custom-ratio-value">自定义比例 (宽:高)</label>
+                    <input type="text" id="custom-ratio-value" placeholder="例如: 1.5">
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h2 class="panel-title"><i>🖼️</i> 图片填充模式</h2>
+                <div class="input-group">
+                    <select id="fill-mode">
+                        <option value="cover">填充（可能裁剪）</option>
+                        <option value="contain">自适应缩放（保留全图）</option>
+                        <option value="blur">缩放并填充模糊背景</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h2 class="panel-title"><i>💾</i> 导出设置</h2>
+                <div class="input-group">
+                    <label for="quality">图片质量 (0-100)</label>
+                    <input type="number" id="quality" min="1" max="100" value="90">
+                </div>
+                <button id="export-btn" class="btn-export">导出为JPG图片</button>
+            </div>
+            
+            <div class="drop-info">
+                <i>⬇️</i>
+                <h3>拖放图片到这里</h3>
+                <p>从您的电脑中拖放图片到拼图网格中</p>
+            </div>
+        </div>
+        
+        <!-- 拼图区域 -->
+        <div class="puzzle-area">
+            <div class="puzzle-header">
+                <h2>拼图工作区</h2>
+                <div>网格: <span id="grid-size">3×3</span></div>
+            </div>
+            
+            <div class="puzzle-container" id="puzzle-container">
+                <div class="placeholder-text">请先生成拼图网格，然后拖入图片进行拼图</div>
+            </div>
+            
+            <div class="instructions">
+                <h3>使用说明：</h3>
+                <ul>
+                    <li>设置行数和列数，点击"生成拼图网格"</li>
+                    <li>从电脑拖拽图片到网格区域</li>
+                    <li>拖拽网格中的图片可以交换位置</li>
+                    <li>调整宽高比和图片填充模式</li>
+                    <li>完成后点击"导出为JPG图片"</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM元素
+            const puzzleContainer = document.getElementById('puzzle-container');
+            const generateBtn = document.getElementById('generate-btn');
+            const exportBtn = document.getElementById('export-btn');
+            const rowsInput = document.getElementById('rows');
+            const colsInput = document.getElementById('columns');
+            const gapInput = document.getElementById('gap');
+            const ratioBtns = document.querySelectorAll('.ratio-btn');
+            const customRatioGroup = document.getElementById('custom-ratio');
+            const fillModeSelect = document.getElementById('fill-mode');
+            const qualityInput = document.getElementById('quality');
+            const gridSizeDisplay = document.getElementById('grid-size');
+            
+            // 当前拼图状态
+            let currentRatio = 1;
+            let draggedItem = null;
+            
+            // 生成拼图网格
+            generateBtn.addEventListener('click', generatePuzzleGrid);
+            
+            // 导出按钮事件
+            exportBtn.addEventListener('click', exportPuzzle);
+
+            // 间距输入变化
+            gapInput.addEventListener('input', function() {
+                puzzleContainer.style.gap = `${parseInt(gapInput.value) || 0}px`;
+            });
+            
+            // 宽高比选择
+            ratioBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    ratioBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    if (this.dataset.ratio === 'custom') {
+                        customRatioGroup.style.display = 'block';
+                        currentRatio = parseFloat(document.getElementById('custom-ratio-value').value) || 1;
+                    } else {
+                        customRatioGroup.style.display = 'none';
+                        currentRatio = parseFloat(this.dataset.ratio);
+                    }
+                    
+                    updateItemAspectRatio();
+                });
+            });
+            
+            // 自定义宽高比输入
+            document.getElementById('custom-ratio-value').addEventListener('input', function() {
+                if (document.querySelector('.ratio-btn.active').dataset.ratio === 'custom') {
+                    currentRatio = parseFloat(this.value) || 1;
+                    updateItemAspectRatio();
+                }
+            });
+            
+            // 填充模式变化
+            fillModeSelect.addEventListener('change', function() {
+                const items = document.querySelectorAll('.puzzle-item');
+                items.forEach(item => {
+                    const img = item.querySelector('img');
+                    if (img) {
+                        applyFillMode(img, this.value);
+                    }
+                });
+            });
+            
+            // 生成网格函数
+            function generatePuzzleGrid() {
+                const rows = parseInt(rowsInput.value) || 3;
+                const cols = parseInt(colsInput.value) || 3;
+                
+                // 更新网格尺寸显示
+                gridSizeDisplay.textContent = `${rows}×${cols}`;
+                
+                // 清空容器
+                puzzleContainer.innerHTML = '';
+                
+                // 设置网格布局
+                puzzleContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                puzzleContainer.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+                puzzleContainer.style.gap = `${parseInt(gapInput.value) || 0}px`;
+                
+                // 创建网格项
+                for (let i = 0; i < rows * cols; i++) {
+                    const item = document.createElement('div');
+                    item.className = 'puzzle-item';
+                    item.setAttribute('draggable', 'true');
+                    item.dataset.index = i;
+                    
+                    // 添加拖放事件
+                    item.addEventListener('dragstart', handleDragStart);
+                    item.addEventListener('dragover', handleDragOver);
+                    item.addEventListener('dragenter', handleDragEnter);
+                    item.addEventListener('dragleave', handleDragLeave);
+                    item.addEventListener('drop', handleDrop);
+                    item.addEventListener('dragend', handleDragEnd);
+                    
+                    puzzleContainer.appendChild(item);
+                }
+                
+                updateItemAspectRatio();
+            }
+            
+            // 更新宽高比
+            function updateItemAspectRatio() {
+                const items = document.querySelectorAll('.puzzle-item');
+                items.forEach(item => {
+                    item.style.aspectRatio = `${1 / currentRatio}`;
+                });
+            }
+            
+            // 拖放功能实现
+            /**
+             * 处理拖拽开始事件
+             * @param {Event} e - 拖拽事件对象
+             */
+            function handleDragStart(e) {
+                console.log('Drag Start:', e.type, this);
+                draggedItem = this;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', this.innerHTML);
+                setTimeout(() => this.classList.add('dragging'), 0);
+            }
+            
+            /**
+             * 处理拖拽经过事件
+             * @param {Event} e - 拖拽事件对象
+             */
+            function handleDragOver(e) {
+                console.log('Drag Over:', e.type, this);
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            }
+            
+            /**
+             * 处理拖拽进入事件
+             * @param {Event} e - 拖拽事件对象
+             */
+            function handleDragEnter(e) {
+                console.log('Drag Enter:', e.type, this);
+                this.classList.add('drag-over');
+            }
+            
+            /**
+             * 处理拖拽离开事件
+             * @param {Event} e - 拖拽事件对象
+             */
+            function handleDragLeave(e) {
+                console.log('Drag Leave:', e.type, this);
+                this.classList.remove('drag-over');
+            }
+            
+            /**
+             * 处理拖放事件
+             * @param {Event} e - 拖放事件对象
+             */
+            /**
+             * 处理拖放事件
+             * @param {Event} e - 拖放事件对象
+             */
+            function handleDrop(e) {
+                console.log('Drop:', e.type, this, e.dataTransfer.files);
+                e.preventDefault(); // 阻止默认行为，防止浏览器打开文件
+                e.stopPropagation();
+                this.classList.remove('drag-over');
+
+                // 检查是否是内部拖放（交换拼图项）
+                if (draggedItem) {
+                    if (draggedItem !== this) {
+                        // 交换内容
+                        const tempHTML = this.innerHTML;
+                        const tempImg = this.querySelector('img');
+                        
+                        this.innerHTML = draggedItem.innerHTML;
+                        draggedItem.innerHTML = tempHTML;
+                        
+                        // 应用填充模式
+                        if (this.querySelector('img')) {
+                            applyFillMode(this.querySelector('img'), fillModeSelect.value);
+                        }
+                        if (draggedItem.querySelector('img')) {
+                            applyFillMode(draggedItem.querySelector('img'), fillModeSelect.value);
+                        }
+                    }
+                } else {
+                    // 处理外部文件拖放
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        const file = files[0];
+                        if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                                const img = document.createElement('img');
+                                img.src = event.target.result;
+                                this.innerHTML = ''; // 清空占位符
+                                this.appendChild(img);
+                                applyFillMode(img, fillModeSelect.value);
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            /**
+             * 处理拖拽结束事件
+             * @param {Event} e - 拖拽事件对象
+             */
+            function handleDragEnd(e) {
+                console.log('Drag End:', e.type, this);
+                document.querySelectorAll('.puzzle-item').forEach(item => {
+                    item.classList.remove('dragging');
+                    item.classList.remove('drag-over');
+                });
+                // 拖放结束后清除 draggedItem 引用
+                draggedItem = null;
+            }
+            
+            // 应用填充模式
+            /**
+             * 应用图片填充模式
+             * @param {HTMLElement} imgElement - 图片元素
+             * @param {string} mode - 填充模式 ('cover', 'contain', 'blur')
+             */
+            /**
+             * 应用图片填充模式
+             * @param {HTMLElement} imgElement - 图片元素
+             * @param {string} mode - 填充模式 ('cover', 'contain', 'blur')
+             */
+            function applyFillMode(imgElement, mode) {
+                const parent = imgElement.parentElement;
+
+                // 清除之前的样式，避免冲突
+                imgElement.style.objectFit = '';
+                imgElement.style.position = '';
+                imgElement.style.zIndex = '';
+                imgElement.style.width = '';
+                imgElement.style.height = '';
+                imgElement.style.top = '';
+                imgElement.style.left = '';
+                imgElement.style.transform = '';
+                parent.style.backgroundImage = '';
+                parent.style.backgroundSize = '';
+                parent.style.backgroundPosition = '';
+                parent.style.filter = ''; // 移除filter，因为html2canvas不支持
+                parent.style.overflow = '';
+                const existingOverlay = parent.querySelector('.image-overlay');
+                if (existingOverlay) existingOverlay.remove();
+
+                const img = new Image();
+                img.src = imgElement.src;
+                img.onload = () => {
+                    const imgRatio = img.naturalWidth / img.naturalHeight;
+                    const parentWidth = parent.clientWidth;
+                    const parentHeight = parent.clientHeight;
+                    const parentRatio = parentWidth / parentHeight;
+
+                    if (mode === 'blur') {
+                        // 模糊背景效果：图片作为背景，自身居中显示
+                        parent.style.backgroundImage = `url(${imgElement.src})`;
+                        parent.style.backgroundSize = 'cover';
+                        parent.style.backgroundPosition = 'center';
+                        parent.style.overflow = 'hidden';
+
+                        // 添加覆盖层使图片突出
+                        const overlay = document.createElement('div');
+                        overlay.className = 'image-overlay'; // 添加类名方便查找和移除
+                        overlay.style.position = 'absolute';
+                        overlay.style.top = '10px';
+                        overlay.style.left = '10px';
+                        overlay.style.right = '10px';
+                        overlay.style.bottom = '10px';
+                        overlay.style.backgroundColor = 'rgba(255,255,255,0.8)';
+                        overlay.style.zIndex = '1';
+                        parent.appendChild(overlay);
+
+                        // 将图片放在上层
+                        imgElement.style.position = 'relative';
+                        imgElement.style.zIndex = '2';
+                        imgElement.style.width = '100%';
+                        imgElement.style.height = '100%';
+                        imgElement.style.objectFit = 'contain'; // 确保图片自身是contain模式
+                    } else if (mode === 'cover') {
+                        // 模拟 object-fit: cover
+                        imgElement.style.position = 'absolute';
+                        imgElement.style.left = '50%';
+                        imgElement.style.top = '50%';
+                        imgElement.style.transform = 'translate(-50%, -50%)';
+                        if (imgRatio > parentRatio) {
+                            // 图片更宽，高度铺满，宽度裁剪
+                            imgElement.style.height = '100%';
+                            imgElement.style.width = 'auto';
+                        } else {
+                            // 图片更高，宽度铺满，高度裁剪
+                            imgElement.style.width = '100%';
+                            imgElement.style.height = 'auto';
+                        }
+                    } else if (mode === 'contain') {
+                        // 模拟 object-fit: contain
+                        imgElement.style.position = 'absolute';
+                        imgElement.style.left = '50%';
+                        imgElement.style.top = '50%';
+                        imgElement.style.transform = 'translate(-50%, -50%)';
+                        if (imgRatio > parentRatio) {
+                            // 图片更宽，宽度铺满，高度留白
+                            imgElement.style.width = '100%';
+                            imgElement.style.height = 'auto';
+                        } else {
+                            // 图片更高，高度铺满，宽度留白
+                            imgElement.style.height = '100%';
+                            imgElement.style.width = 'auto';
+                        }
+                    }
+                };
+            }
+            
+            // 导出拼图为图片
+            function exportPuzzle() {
+                const quality = parseInt(qualityInput.value) || 90;
+                
+                html2canvas(puzzleContainer, {
+                    scale: 2,
+                    backgroundColor: '#f8f8f8',
+                    logging: true,
+                    useCORS: true
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `拼图-${new Date().toISOString().slice(0,10)}.jpg`;
+                    link.href = canvas.toDataURL('image/jpeg', quality / 100);
+                    link.click();
+                });
+            }
+            
+            // 从电脑拖入图片
+            puzzleContainer.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+            
+            puzzleContainer.addEventListener('drop', function(e) {
+                e.preventDefault();
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.type.match('image.*')) {
+                        const reader = new FileReader();
+                        
+                        reader.onload = function(e) {
+                            // 查找最近的网格项（如果直接拖到容器上）
+                            let targetItem = e.target.closest('.puzzle-item');
+                            
+                            // 如果没有直接拖到项目上，找一个空的
+                            if (!targetItem) {
+                                const emptyItems = document.querySelectorAll('.puzzle-item:not(:has(img))');
+                                if (emptyItems.length > 0) {
+                                    targetItem = emptyItems[0];
+                                } else {
+                                    // 没有空项目，使用第一个
+                                    targetItem = document.querySelector('.puzzle-item');
+                                }
+                            }
+                            
+                            if (targetItem) {
+                                // 移除现有内容
+                                targetItem.innerHTML = '';
+                                
+                                // 创建新图片
+                                const img = document.createElement('img');
+                                img.src = e.target.result;
+                                img.alt = '拼图图片';
+                                
+                                // 应用填充模式
+                                applyFillMode(img, fillModeSelect.value);
+                                
+                                targetItem.appendChild(img);
+                            }
+                        };
+                        
+                        reader.readAsDataURL(file);
+                    }
+                }
+            });
+            
+            // 初始化生成3x3网格
+            generatePuzzleGrid();
+        });
+    </script>
+</body>
+</html>
